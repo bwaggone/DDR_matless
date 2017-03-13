@@ -1,6 +1,7 @@
 #include <Wire.h>
 
-#define SHIFT 256
+//#define SHIFT 256
+#define SHIFT 1
 
 #define Serial SerialUSB
  
@@ -45,7 +46,8 @@ void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data)
   Wire.write(Data);
   Wire.endTransmission();
 }
- 
+
+uint32_t last_t = micros();
  
 // Initializations
 void setup()
@@ -75,13 +77,15 @@ void setup()
  
 long int cpt=0;
 const char* filename = "datalogger.txt";
-auto fp = fopen(filename, "w");
-int32_t xvel = 0, yvel = 0;
+//auto fp = fopen(filename, "w");
+int32_t xvel = 0, yvel = 0, xpos = 0, ypos = 0;
 
 // Main loop, read and display data
 void loop()
 {
-
+  uint32_t t = micros();
+  uint32_t dt = t-last_t;
+  last_t = t;
   // _______________
   // ::: Counter :::
  
@@ -117,7 +121,7 @@ void loop()
   int32_t ay32 = 0;
   int32_t az32 = 0;
 
-  if(ax > 1400){
+  /*if(ax > 1400){
     ax32 = ax;
     ay32 = ay;
     az32 = az;
@@ -127,7 +131,7 @@ void loop()
     ax32 = ax;
     ay32 = ay;
     az32 = az;
-  }
+  }*/
 
 
 
@@ -145,16 +149,35 @@ void loop()
   int16_t gz=Buf[12]<<8 | Buf[13];
  
     // Display values
-  int32_t del_xvel = ax32 / 100;
+  int32_t del_xvel = ax * (dt*1e-6);
   xvel += del_xvel;
-  int32_t del_yvel = ay32 / 100;
+  int32_t del_yvel = ay * dt *1e-6;
   yvel += del_yvel;
+  
+  int32_t del_xpos = xvel * dt*1e-6;
+  xpos += del_xpos;
+  int32_t del_ypos = yvel *dt*1e-6;
+  ypos += del_ypos;
+  
   // Accelerometer
+
+
   
   if(cpt % 10 == 0){
-    Serial.print (ax32 / SHIFT,DEC); 
+    //Serial.print (ax / SHIFT,DEC);
+    Serial.print (ax); 
     Serial.print ("\t");
-    Serial.print (xvel / SHIFT,DEC);
+    //Serial.print (xvel / SHIFT,DEC);
+    Serial.print (xvel);
+    Serial.print ("\t");
+    //Serial.print (xpos / SHIFT,DEC);
+    Serial.print (del_xvel);
+    Serial.print ("\t");
+    //Serial.print (xpos / SHIFT,DEC);
+    Serial.print (xpos);
+
+    
+    
   //Serial.print ("\t");
   //Serial.print (az,DEC);  
   //Serial.print ("\t");
@@ -222,5 +245,5 @@ if(cpt < 1000){
  //}
  
   // End of line
-  delay(10);    
+  //delay(10);    
 }
