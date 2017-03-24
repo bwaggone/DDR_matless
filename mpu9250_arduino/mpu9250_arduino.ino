@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include "Math3D.h"
 
 //#define SHIFT 256
 #define SHIFT 1
@@ -79,6 +80,7 @@ long int cpt=0;
 const char* filename = "datalogger.txt";
 //auto fp = fopen(filename, "w");
 int32_t xvel = 0, yvel = 0, xpos = 0, ypos = 0;
+Quat testQuat;
 
 // Main loop, read and display data
 void loop()
@@ -161,20 +163,19 @@ void loop()
   
   // Accelerometer
 
-
-  
-  if(cpt % 10 == 0){
+  Quat changeQuat = Quaternion(Vector((gx / 180)* PI, (gy / 180)* PI, (gz / 180)* PI), dt);
+  testQuat = Mul(testQuat, changeQuat);
+  if(cpt % 20 == 0){
     //Serial.print (ax / SHIFT,DEC);
-    Serial.print (ax); 
+    Serial.print (testQuat.x); 
     Serial.print ("\t");
     //Serial.print (xvel / SHIFT,DEC);
-    Serial.print (xvel);
+    Serial.print (testQuat.y);
     Serial.print ("\t");
     //Serial.print (xpos / SHIFT,DEC);
-    Serial.print (del_xvel);
+    Serial.print (testQuat.z);
     Serial.print ("\t");
     //Serial.print (xpos / SHIFT,DEC);
-    Serial.print (xpos);
 
     
     
