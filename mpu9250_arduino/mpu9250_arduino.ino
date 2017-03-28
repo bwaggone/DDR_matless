@@ -80,7 +80,18 @@ long int cpt=0;
 const char* filename = "datalogger.txt";
 //auto fp = fopen(filename, "w");
 int32_t xvel = 0, yvel = 0, xpos = 0, ypos = 0;
+int xdeg = 0, ydeg = 0, zdeg = 0;
 Quat testQuat;
+
+
+Quat AttitudeEstimateQuat;
+
+Vec3 correction_Body, correction_World;
+Vec3 Accel_Body, Accel_World;
+Vec3 GyroVec;
+
+const Vec3 VERTICAL = Vector(0.0f, 0.0f, 1.0f);  // vertical vector in the World frame
+float axg = 0, ayg = 0, azg = 0;
 
 // Main loop, read and display data
 void loop()
@@ -137,9 +148,9 @@ void loop()
 
 
 
-  ax32 = ax32 * (SHIFT);
-  ay32 = ay32 * (SHIFT);
-  az32 = az32 * (SHIFT);
+  axg = (float(ax) / (8192));
+  ayg= (float(ay) / (8192));
+  azg = (float(az) / (8192));
 
   //if(ax32 < 0){
   //  Serial.print("negative motion!\n");
@@ -149,7 +160,7 @@ void loop()
   int16_t gx=-(Buf[8]<<8 | Buf[9]);
   int16_t gy=-(Buf[10]<<8 | Buf[11]);
   int16_t gz=Buf[12]<<8 | Buf[13];
- 
+ /*
     // Display values
   int32_t del_xvel = ax * (dt*1e-6);
   xvel += del_xvel;
@@ -160,21 +171,76 @@ void loop()
   xpos += del_xpos;
   int32_t del_ypos = yvel *dt*1e-6;
   ypos += del_ypos;
+  */
+  
+  
+  
+
+    GyroVec  = Vector((gx / 180)* PI, (gy / 180)* PI, (gz / 180)* PI);  // move gyro data to vector structure
+    Accel_Body = Vector(axg, ayg, azg);  // move accel data to vector structure
+
+    Accel_World = Rotate(AttitudeEstimateQuat, Accel_Body); // rotate accel from body frame to world frame
+
+    correction_World = CrossProd(Accel_World, VERTICAL); // cross product to determine error
+
+    Vec3 correction_Body = Rotate(correction_World, AttitudeEstimateQuat); // rotate correction vector to body frame
+
+    GyroVec = Sum(GyroVec, correction_Body);  // add correction vector to gyro data
+
+    Quat incrementalRotation = Quaternion(GyroVec, dt);  // create incremental rotation quat
+
+    AttitudeEstimateQuat = Mul(incrementalRotation, AttitudeEstimateQuat);  // quaternion integration (rotation composting through multiplication)
+
+/*if(cpt == 1){
+  Serial.print (incrementalRotation.x); 
+    Serial.print ("\t");
+    Serial.print (AttitudeEstimateQuat.y);
+    Serial.print ("\t");
+    Serial.print (GyroVec.z);
+    Serial.print ("\t");
+  
+}*/
+  
+/*
+  double ysqr = AttitudeEstimateQuat.y * AttitudeEstimateQuat.y;
+  double roll, pitch, yaw;
+  // roll (x-axis rotation)
+  double t0 = +2.0 * (AttitudeEstimateQuat.w * AttitudeEstimateQuat.x + AttitudeEstimateQuat.y * AttitudeEstimateQuat.z);
+  double t1 = +1.0 - 2.0 * (AttitudeEstimateQuat.x * AttitudeEstimateQuat.x + ysqr);
+  roll = atan2(t0, t1);
+
+  // pitch (y-axis rotation)
+  double t2 = +2.0 * (AttitudeEstimateQuat.w * AttitudeEstimateQuat.y - AttitudeEstimateQuat.z * AttitudeEstimateQuat.x);
+  t2 = t2 > 1.0 ? 1.0 : t2;
+  t2 = t2 < -1.0 ? -1.0 : t2;
+  pitch = asin(t2);
+
+  // yaw (z-axis rotation)
+  double t3 = +2.0 * (AttitudeEstimateQuat.w * AttitudeEstimateQuat.z + AttitudeEstimateQuat.x * AttitudeEstimateQuat.y);
+  double t4 = +1.0 - 2.0 * (ysqr + AttitudeEstimateQuat.z * AttitudeEstimateQuat.z);  
+  yaw = atan2(t3, t4);
+  */
   
   // Accelerometer
 
-  Quat changeQuat = Quaternion(Vector((gx / 180)* PI, (gy / 180)* PI, (gz / 180)* PI), dt);
-  testQuat = Mul(testQuat, changeQuat);
-  if(cpt % 20 == 0){
-    //Serial.print (ax / SHIFT,DEC);
-    Serial.print (testQuat.x); 
+  //Quat changeQuat = Quaternion(Vector((gx / 180)* PI, (gy / 180)* PI, (gz / 180)* PI), dt);
+  //testQuat = Mul(changeQuat, testQuat);
+  auto testRotate = Rotate(AttitudeEstimateQuat, Vector(axg,ayg,azg));
+  //testRotate.z += -1;
+  if(cpt % 50 == 0){
+    //Serial.print (ax); 
+    //Serial.print ("\t");
+    //Serial.print (ay);
+    //Serial.print ("\t");
+    //Serial.print (az);
+    //Serial.print ("\t");
+    Serial.print (testRotate.x); 
     Serial.print ("\t");
-    //Serial.print (xvel / SHIFT,DEC);
-    Serial.print (testQuat.y);
+    Serial.print (testRotate.y);
     Serial.print ("\t");
-    //Serial.print (xpos / SHIFT,DEC);
-    Serial.print (testQuat.z);
+    Serial.print (abs(testRotate.z) - 1);
     Serial.print ("\t");
+    
     //Serial.print (xpos / SHIFT,DEC);
 
     
